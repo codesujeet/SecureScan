@@ -820,15 +820,15 @@ def main():
             st.success("✅ data loaded successfully!")
             
             # Parse system information
-            with st.spinner("Parsing sample system information..."):
+            with st.spinner("Parsing system information..."):
                 system_data = parse_system_info(file_content)
                 
             # Show parsed data in expandable section
-            with st.expander("View parsed sample system information"):
+            with st.expander("View parsed system information"):
                 st.json(system_data)
             
             # Analyze the sample data
-            with st.spinner("Analyzing sample data..."):
+            with st.spinner("Analyzing data..."):
                 # Show progress
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -898,7 +898,7 @@ def main():
                     <li>Review the findings and recommendations</li>
                     <li>Export the report for your records</li>
                 </ol>
-                <p>You can also use the "Load Sample Data" button to see a demonstration of the dashboard.</p>
+                <p>You can also use the "Load Data" button to see a demonstration of the dashboard.</p>
             </div>
             """, unsafe_allow_html=True)
             
