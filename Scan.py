@@ -16,7 +16,8 @@ from dotenv import load_dotenv
 import time
 from streamlit_lottie import st_lottie
 import plotly.figure_factory as ff
-import requests
+import PyPDF2
+import io
 
 # Load environment variables
 load_dotenv()
@@ -177,6 +178,31 @@ st.markdown("""
     div[data-testid="stExpanderToggleButton"] {
         border-radius: 8px 8px 0 0;
     }
+    /* Right-side dashboard layout */
+    .dashboard-container {
+        display: flex;
+        flex-direction: row;
+    }
+    .upload-section {
+        flex: 3;
+        padding-right: 20px;
+    }
+    .dashboard-section {
+        flex: 7;
+        border-left: 1px solid #E5E7EB;
+        padding-left: 20px;
+    }
+    /* Media query for mobile responsiveness */
+    @media (max-width: 768px) {
+        .dashboard-container {
+            flex-direction: column;
+        }
+        .upload-section, .dashboard-section {
+            flex: 1;
+            padding: 0;
+            border: none;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -186,6 +212,18 @@ def load_lottie_url(url: str):
     if r.status_code != 200:
         return None
     return r.json()
+
+# Function to extract text from PDF
+def extract_text_from_pdf(pdf_file):
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page_num in range(len(pdf_reader.pages)):
+            text += pdf_reader.pages[page_num].extract_text()
+        return text
+    except Exception as e:
+        st.error(f"Error extracting text from PDF: {str(e)}")
+        return None
 
 # Configure Gemini API
 def configure_gemini():
@@ -684,178 +722,205 @@ with st.sidebar:
 
 # Main application
 def main():
-    # Main content
-    tab1, tab2 = st.tabs(["📊 Dashboard", "📤 Upload Data"])
+    # Create a two-column layout with upload on left, dashboard on right
+    upload_col, dashboard_col = st.columns([3, 7])
     
-    with tab2:
-        st.markdown("<h2 class='sub-header'>Upload System Information</h2>", unsafe_allow_html=True)
+    with upload_col:
+        st.markdown("<h2 class='sub-header'>Upload Data</h2>", unsafe_allow_html=True)
         
-        upload_col1, upload_col2 = st.columns([1, 1])
+        # File uploader that accepts txt, json, csv, and now pdf
+        uploaded_file = st.file_uploader("Upload system information file", type=["txt", "json", "csv", "pdf"])
         
-        with upload_col1:
-            # File uploader
-            uploaded_file = st.file_uploader("Upload system information file", type=["txt", "json", "csv"])
+        if uploaded_file is not None:
+            st.success("✅ File uploaded successfully!")
             
-            if uploaded_file is not None:
-                st.success("✅ File uploaded successfully!")
-                
-                # Read file content
+            # Read file content based on file type
+            file_extension = uploaded_file.name.split('.')[-1].lower()
+            
+            if file_extension == 'pdf':
+                # Process PDF file
+                file_content = extract_text_from_pdf(uploaded_file)
+                if file_content is None:
+                    st.error("Failed to extract text from PDF. Please check the file format.")
+                    return
+            else:
+                # Process text-based files
                 file_content = uploaded_file.getvalue().decode("utf-8")
-                
-                # Parse system information
-                with st.spinner("Parsing system information..."):
-                    system_data = parse_system_info(file_content)
-                    
-                # Show parsed data in expandable section
-                with st.expander("View parsed system information"):
-                    st.json(system_data)
-                
-                if st.button("🔍 Analyze Vulnerabilities", key="analyze_button"):
-                    # Show progress
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    
-                    # Simulated analysis steps
-                    status_text.text("Step 1/5: Initializing analysis...")
-                    progress_bar.progress(10)
-                    time.sleep(0.5)
-                    
-                    status_text.text("Step 2/5: Processing system information...")
-                    progress_bar.progress(30)
-                    time.sleep(0.5)
-                    
-                    status_text.text("Step 3/5: Identifying vulnerabilities...")
-                    progress_bar.progress(50)
-                    time.sleep(0.5)
-                    
-                    status_text.text("Step 4/5: Analyzing security risks...")
-                    progress_bar.progress(70)
-                    time.sleep(0.5)
-                    
-                    status_text.text("Step 5/5: Generating recommendations...")
-                    progress_bar.progress(90)
-                    
-                    # Actual analysis
-                    analysis_result = analyze_vulnerabilities(system_data)
-                    
-                    progress_bar.progress(100)
-                    status_text.text("Analysis complete!")
-                    time.sleep(0.5)
-                    
-                    # Clear progress elements
-                    progress_bar.empty()
-                    status_text.empty()
-                    
-                    if analysis_result:
-                        # Save analysis result to session state
-                        st.session_state.analysis_result = analysis_result
-                        st.session_state.system_data = system_data
-                        
-                        # Show success message
-                        st.success("✅ Analysis completed successfully!")
-                        
-                        # Switch to dashboard tab
-                        # This is a workaround since direct tab switching is not fully supported
-                        st.markdown("Dashboard ready! Please click on the 'Dashboard' tab to view results.")
-                    else:
-                        st.error("❌ Failed to analyze vulnerabilities")
-        
-        with upload_col2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("### 🔄 Or use sample data")
             
-            # Option to use sample data
-            if st.button("Load Sample Data", key="sample_button"):
-                file_content = create_sample_system_info()
-                st.success("✅ Sample data loaded successfully!")
+            # Parse system information
+            with st.spinner("Parsing system information..."):
+                system_data = parse_system_info(file_content)
                 
-                # Parse system information
-                with st.spinner("Parsing sample system information..."):
-                    system_data = parse_system_info(file_content)
-                    
-                # Show parsed data in expandable section
-                with st.expander("View parsed system information"):
-                    st.json(system_data)
+            # Show parsed data in expandable section
+            with st.expander("View parsed system information"):
+                st.json(system_data)
+            
+            if st.button("🔍 Analyze Vulnerabilities", key="analyze_button"):
+                # Show progress
+                progress_bar = st.progress(0)
+                status_text = st.empty()
                 
-                # Analyze vulnerabilities
-                with st.spinner("Analyzing vulnerabilities..."):
-                    # Show progress
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+                # Simulated analysis steps
+                status_text.text("Step 1/5: Initializing analysis...")
+                progress_bar.progress(10)
+                time.sleep(0.5)
+                
+                status_text.text("Step 2/5: Processing system information...")
+                progress_bar.progress(30)
+                time.sleep(0.5)
+                
+                status_text.text("Step 3/5: Identifying vulnerabilities...")
+                progress_bar.progress(50)
+                time.sleep(0.5)
+                
+                status_text.text("Step 4/5: Analyzing security risks...")
+                progress_bar.progress(70)
+                time.sleep(0.5)
+                
+                status_text.text("Step 5/5: Generating recommendations...")
+                progress_bar.progress(90)
+                
+                # Actual analysis
+                analysis_result = analyze_vulnerabilities(system_data)
+                
+                progress_bar.progress(100)
+                status_text.text("Analysis complete!")
+                time.sleep(0.5)
+                
+                # Clear progress elements
+                progress_bar.empty()
+                status_text.empty()
+                
+                if analysis_result:
+                    # Save analysis result to session state
+                    st.session_state.analysis_result = analysis_result
+                    st.session_state.system_data = system_data
                     
-                    # Simulated analysis steps
-                    status_text.text("Step 1/5: Initializing analysis...")
-                    progress_bar.progress(10)
-                    time.sleep(0.3)
+                    # Show success message
+                    st.success("✅ Analysis completed successfully!")
+                else:
+                    st.error("❌ Failed to analyze vulnerabilities")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 🔄 Or use sample data")
+        
+        # Option to use sample data
+        if st.button("Load Sample Data", key="sample_button"):
+            file_content = create_sample_system_info()
+            st.success("✅ Sample data loaded successfully!")
+            
+            # Parse system information
+            with st.spinner("Parsing sample system information..."):
+                system_data = parse_system_info(file_content)
+                
+            # Show parsed data in expandable section
+            with st.expander("View parsed sample system information"):
+                st.json(system_data)
+            
+            # Analyze the sample data
+            with st.spinner("Analyzing sample data..."):
+                # Show progress
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Simulated analysis steps
+                status_text.text("Step 1/5: Initializing analysis...")
+                progress_bar.progress(10)
+                time.sleep(0.5)
+                
+                status_text.text("Step 2/5: Processing system information...")
+                progress_bar.progress(30)
+                time.sleep(0.5)
+                
+                status_text.text("Step 3/5: Identifying vulnerabilities...")
+                progress_bar.progress(50)
+                time.sleep(0.5)
+                
+                status_text.text("Step 4/5: Analyzing security risks...")
+                progress_bar.progress(70)
+                time.sleep(0.5)
+                
+                status_text.text("Step 5/5: Generating recommendations...")
+                progress_bar.progress(90)
+                
+                # Actual analysis
+                analysis_result = analyze_vulnerabilities(system_data)
+                
+                progress_bar.progress(100)
+                status_text.text("Analysis complete!")
+                time.sleep(0.5)
+                
+                # Clear progress elements
+                progress_bar.empty()
+                status_text.empty()
+                
+                if analysis_result:
+                    # Save analysis result to session state
+                    st.session_state.analysis_result = analysis_result
+                    st.session_state.system_data = system_data
                     
-                    status_text.text("Step 2/5: Processing system information...")
-                    progress_bar.progress(30)
-                    time.sleep(0.3)
-                    
-                    status_text.text("Step 3/5: Identifying vulnerabilities...")
-                    progress_bar.progress(50)
-                    time.sleep(0.3)
-                    
-                    status_text.text("Step 4/5: Analyzing security risks...")
-                    progress_bar.progress(70)
-                    time.sleep(0.3)
-                    
-                    status_text.text("Step 5/5: Generating recommendations...")
-                    progress_bar.progress(90)
-                    status_text.text("Step 5/5: Generating recommendations...")
-                    progress_bar.progress(90)
-                    
-                    # Actual analysis
-                    analysis_result = analyze_vulnerabilities(system_data)
-                    
-                    progress_bar.progress(100)
-                    status_text.text("Analysis complete!")
-                    time.sleep(0.5)
-                    
-                    # Clear progress elements
-                    progress_bar.empty()
-                    status_text.empty()
-                    
-                    if analysis_result:
-                        # Save analysis result to session state
-                        st.session_state.analysis_result = analysis_result
-                        st.session_state.system_data = system_data
-                        
-                        # Show success message
-                        st.success("✅ Analysis completed successfully!")
-                        
-                        # Switch to dashboard tab
-                        # This is a workaround since direct tab switching is not fully supported
-                        st.markdown("Dashboard ready! Please click on the 'Dashboard' tab to view results.")
-                    else:
-                        st.error("❌ Failed to analyze vulnerabilities")
+                    # Show success message
+                    st.success("✅ Analysis completed successfully!")
+                else:
+                    st.error("❌ Failed to analyze vulnerabilities")
     
-    with tab1:
-        # Check if analysis result exists in session state
+    with dashboard_col:
+        # Display dashboard if analysis result exists
         if 'analysis_result' in st.session_state:
-            # Render dashboard with analysis result
             render_dashboard(st.session_state.analysis_result)
         else:
-            # Show welcome message
-            welcome_animation = load_lottie_url("https://assets5.lottiefiles.com/packages/lf20_ysas4vcp.json")
+            # Welcome message and instructions
+            welcome_animation = load_lottie_url("https://assets5.lottiefiles.com/packages/lf20_qmfs6c3i.json")
+            
+            st.markdown("<h2 class='sub-header'>Welcome to SecureScan Dashboard</h2>", unsafe_allow_html=True)
+            
             if welcome_animation:
-                st_lottie(welcome_animation, speed=1, height=300, key="welcome_anim")
+                st_lottie(welcome_animation, speed=1, height=200, key="welcome_anim")
             
-            st.markdown("<h1 class='main-header'>Welcome to SecureScan Dashboard</h1>", unsafe_allow_html=True)
-            st.markdown("<div class='card'>", unsafe_allow_html=True)
             st.markdown("""
-            ### 🛡️ Comprehensive Security Analysis
+            <div class="card">
+                <h3 class="section-header">Getting Started</h3>
+                <p>This dashboard helps you analyze your system's security posture and identify potential vulnerabilities.</p>
+                <p>To get started:</p>
+                <ol>
+                    <li>Upload a system information file using the panel on the left</li>
+                    <li>Click "Analyze Vulnerabilities" to perform a security assessment</li>
+                    <li>Review the findings and recommendations</li>
+                    <li>Export the report for your records</li>
+                </ol>
+                <p>You can also use the "Load Sample Data" button to see a demonstration of the dashboard.</p>
+            </div>
+            """, unsafe_allow_html=True)
             
-            SecureScan Dashboard provides detailed analysis of your system's security posture:
+            # Features section
+            st.markdown("<h3 class='section-header'>Key Features</h3>", unsafe_allow_html=True)
             
-            - Identify security vulnerabilities
-            - Assess risk levels
-            - Get tailored recommendations
-            - Generate comprehensive reports
+            col1, col2, col3 = st.columns(3)
             
-            To get started, click on the "Upload Data" tab and upload your system information file or use the sample data.
-            """)
-            st.markdown("</div>", unsafe_allow_html=True)
+            with col1:
+                st.markdown("""
+                <div class="metric-card">
+                    <div class="metric-label">🔍 Vulnerability Detection</div>
+                    <p>Identify security weaknesses in your system configuration</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("""
+                <div class="metric-card">
+                    <div class="metric-label">📊 Risk Assessment</div>
+                    <p>Visualize security risks with intuitive graphs and metrics</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                st.markdown("""
+                <div class="metric-card">
+                    <div class="metric-label">🛡️ Remediation Guidance</div>
+                    <p>Get actionable recommendations to improve security</p>
+                </div>
+                """, unsafe_allow_html=True)
 
+# Run the main application
 if __name__ == "__main__":
     main()

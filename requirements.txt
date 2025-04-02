@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+requests
+python-dotenv
+PyPDF2
+streamlit-lottie
+google-generativeai
