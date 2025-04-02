@@ -812,7 +812,7 @@ def main():
                     st.error("❌ Failed to analyze vulnerabilities")
         
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("### Quick Load Data")
+        st.markdown("###  📊Quick Load Data")
         
         # Option to use sample data
         if st.button("Load Data", key="sample_button"):
