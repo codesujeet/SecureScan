@@ -815,7 +815,7 @@ def main():
         st.markdown("### 🔄 Or use sample data")
         
         # Option to use sample data
-        if st.button("Load Sample Data", key="sample_button"):
+        if st.button("Load Data", key="sample_button"):
             file_content = create_sample_system_info()
             st.success("✅ Sample data loaded successfully!")
             
