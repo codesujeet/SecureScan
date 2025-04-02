@@ -812,12 +812,12 @@ def main():
                     st.error("❌ Failed to analyze vulnerabilities")
         
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("### 🔄 Or use sample data")
+        st.markdown("### Quick Load Data")
         
         # Option to use sample data
         if st.button("Load Data", key="sample_button"):
             file_content = create_sample_system_info()
-            st.success("✅ Sample data loaded successfully!")
+            st.success("✅ data loaded successfully!")
             
             # Parse system information
             with st.spinner("Parsing sample system information..."):
